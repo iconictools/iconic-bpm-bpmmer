@@ -3,23 +3,16 @@ setlocal
 
 cd /d "%~dp0"
 set "APP_NAME=Ultimate BPM Finder"
+set "SCRIPT=%~dp0run_windows.ps1"
 
-if not exist "run.sh" (
-  echo [ERROR] run.sh not found in this folder.
-  pause
-  exit /b 1
-)
-
-where bash >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] Bash is required. Install Git Bash and run this file again.
-  echo Download: https://git-scm.com/download/win
+if not exist "%SCRIPT%" (
+  echo [ERROR] run_windows.ps1 not found in this folder.
   pause
   exit /b 1
 )
 
 echo Starting %APP_NAME%...
-bash "%~dp0run.sh"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"
 
 if errorlevel 1 (
   echo.
