@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>iconic-bpm-bpmmer — Ultimate BPM Finder</title>
+<link rel="stylesheet" href="/static/css/style.css"/>
+<!-- WaveSurfer for waveform (local copy; CDN fallback via safe script injection) -->
+<script src="/static/lib/wavesurfer.min.js"></script>
+<script>
+if (typeof WaveSurfer === 'undefined') {
+  var s = document.createElement('script');
+  s.src = 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js';
+  document.head.appendChild(s);
+}
+</script>
+<!-- Chart.js for BPM over time (local copy; CDN fallback via safe script injection) -->
+<script src="/static/lib/chart.umd.min.js"></script>
+<script>
+if (typeof Chart === 'undefined') {
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+  document.head.appendChild(s);
+}
+</script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo-area">
+      <span class="logo-icon">🎵</span>
+      <div>
+        <h1>iconic-bpm-bpmmer</h1>
+        <span class="logo-sub">Ultimate BPM &amp; Tempo Analyser</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="app-main">
+
+  <!-- ─── Upload Panel ─────────────────────────────────────── -->
+  <section class="panel" id="upload-panel">
+    <h2 class="panel-title">1 · Load Audio</h2>
+    <div class="upload-zone" id="drop-zone">
+      <input type="file" id="file-input" accept="audio/*,.flac,.wav,.mp3,.aiff,.aif,.ogg,.m4a,.opus" hidden/>
+      <div class="upload-prompt" id="upload-prompt">
+        <span class="upload-icon">📁</span>
+        <p>Drag &amp; drop an audio file here, or <button class="link-btn" onclick="document.getElementById('file-input').click()">browse</button></p>
+        <p class="upload-hint">Supports WAV · FLAC · MP3 · AIFF · OGG · M4A · Opus and more</p>
+      </div>
+      <div class="upload-selected" id="upload-selected" hidden>
+        <span class="file-icon">🎧</span>
+        <span id="selected-filename">—</span>
+        <button class="icon-btn" id="clear-file-btn" title="Remove file">✕</button>
+      </div>
+    </div>
+
+    <div class="options-row">
+      <label>
+        BPM range:
+        <input type="number" id="opt-min-bpm" value="40" min="20" max="500" step="1"/> –
+        <input type="number" id="opt-max-bpm" value="300" min="20" max="500" step="1"/>
+      </label>
+      <label>
+        <input type="checkbox" id="opt-sections" checked/>
+        Analyse song sections
+      </label>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-primary" id="analyze-btn" disabled>Analyse</button>
+    </div>
+  </section>
+
+  <!-- ─── Progress ─────────────────────────────────────────── -->
+  <section class="panel" id="progress-panel" hidden>
+    <h2 class="panel-title">Analysing …</h2>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+    </div>
+    <p class="progress-msg" id="progress-msg">Starting …</p>
+  </section>
+
+  <!-- ─── Results ──────────────────────────────────────────── -->
+  <section class="panel" id="results-panel" hidden>
+    <h2 class="panel-title">2 · Analysis Results</h2>
+
+    <!-- ── Global stats ── -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card primary">
+        <div class="stat-label">Global BPM</div>
+        <div class="stat-value" id="stat-bpm">—</div>
+        <div class="stat-sub" id="stat-bpm-precise">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Time Signature</div>
+        <div class="stat-value" id="stat-ts">—</div>
+        <div class="stat-sub" id="stat-ts-conf">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Duration</div>
+        <div class="stat-value" id="stat-dur">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Beats</div>
+        <div class="stat-value" id="stat-beats">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tempo Changes</div>
+        <div class="stat-value" id="stat-changes">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Detected Sections</div>
+        <div class="stat-value" id="stat-sections">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confidence</div>
+        <div class="stat-value" id="stat-conf">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Analysis Sample Rate</div>
+        <div class="stat-value" id="stat-sr">—</div>
+      </div>
+    </div>
+
+    <!-- ── Waveform + Beat Grid ── -->
+    <div class="viz-section">
+      <div class="viz-header">
+        <h3>Waveform &amp; Beat Grid</h3>
+        <label class="toggle-label">
+          <input type="checkbox" id="show-beats-toggle" checked/> Show beats
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="show-downbeats-toggle" checked/> Show downbeats
+        </label>
+      </div>
+      <div id="waveform-container">
+        <div id="waveform"></div>
+        <div id="beat-overlay"></div>
+      </div>
+      <div id="timeline-container"></div>
+      <div class="transport-row">
+        <button class="icon-btn" id="play-btn" title="Play/Pause">▶</button>
+        <span id="playhead-time">0:00.000</span>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.8" title="Volume"/>
+        <span class="transport-label">Vol</span>
+      </div>
+    </div>
+
+    <!-- ── Section Timeline ── -->
+    <div class="viz-section" id="sections-viz-wrap">
+      <h3>Song Sections</h3>
+      <canvas id="sections-canvas" height="60"></canvas>
+      <div id="sections-legend" class="sections-legend"></div>
+    </div>
+
+    <!-- ── BPM Over Time ── -->
+    <div class="viz-section">
+      <h3>BPM Over Time</h3>
+      <div class="chart-wrap">
+        <canvas id="bpm-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- ── Time Signature Map ── -->
+    <div class="viz-section" id="ts-viz-wrap">
+      <h3>Time Signature Map</h3>
+      <canvas id="ts-canvas" height="50"></canvas>
+    </div>
+
+    <!-- ── Tempo Changes Table ── -->
+    <div class="viz-section" id="changes-section">
+      <h3>Detected Tempo Changes</h3>
+      <div class="table-wrap">
+        <table id="changes-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>From BPM</th>
+              <th>To BPM</th>
+              <th>Δ BPM</th>
+              <th>Type</th>
+              <th>Transition</th>
+            </tr>
+          </thead>
+          <tbody id="changes-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Time Signature Changes ── -->
+    <div class="viz-section" id="ts-changes-section">
+      <h3>Time Signature Changes</h3>
+      <div class="table-wrap">
+        <table id="ts-changes-table" class="data-table">
+          <thead>
+            <tr><th>Time</th><th>From</th><th>To</th></tr>
+          </thead>
+          <tbody id="ts-changes-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Sections Detail ── -->
+    <div class="viz-section" id="sections-detail">
+      <h3>Section Details</h3>
+      <div class="table-wrap">
+        <table id="sections-table" class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Label</th><th>Start</th><th>End</th>
+              <th>Duration</th><th>Cluster</th><th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="sections-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Beat Intervals ── -->
+    <div class="viz-section">
+      <h3>Beat Timing Statistics</h3>
+      <div id="beat-stats" class="stats-mini-grid"></div>
+    </div>
+
+  </section><!-- end results-panel -->
+
+  <!-- ─── Export Panel ─────────────────────────────────────── -->
+  <section class="panel" id="export-panel" hidden>
+    <h2 class="panel-title">3 · Export</h2>
+    <div class="export-grid">
+
+      <div class="export-card">
+        <h4>🎹 MIDI Tempo Map</h4>
+        <p>Standard MIDI file with tempo-change events + click track.<br/>
+           Import into <strong>FL Studio</strong>, <strong>Ableton Live</strong>,
+           <strong>Logic</strong>, <strong>Reaper</strong>, or any DAW.</p>
+        <button class="btn-export" data-fmt="mid">Download .mid</button>
+      </div>
+
+      <div class="export-card">
+        <h4>🟠 Ableton Live</h4>
+        <p>Warp-marker analysis file (.asd) to place next to your audio
+           clip so Ableton auto-warps it with the detected tempo map.</p>
+        <button class="btn-export" data-fmt="asd">Download .asd</button>
+      </div>
+
+      <div class="export-card">
+        <h4>🟣 FL Studio</h4>
+        <p>Plain-text beat/BPM tempo map (.txt) compatible with FL Studio's
+           tempo-import workflow.</p>
+        <button class="btn-export" data-fmt="txt">Download .txt</button>
+      </div>
+
+      <div class="export-card">
+        <h4>📊 CSV Tempo Log</h4>
+        <p>Time-stamped BPM + time-signature log. Open in Excel, Google
+           Sheets, or any analysis tool.</p>
+        <button class="btn-export" data-fmt="csv">Download .csv</button>
+      </div>
+
+      <div class="export-card">
+        <h4>📋 JSON Full Analysis</h4>
+        <p>Complete machine-readable analysis dump including all beat
+           positions, sections, and metadata.</p>
+        <button class="btn-export" data-fmt="json">Download .json</button>
+      </div>
+
+      <div class="export-card">
+        <h4>🕐 Beat Markers</h4>
+        <p>One beat timestamp per line (seconds). Compatible with most
+           video editors and audio tools.</p>
+        <button class="btn-export" data-fmt="markers">Download beats.txt</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── Normalize Panel ──────────────────────────────────── -->
+  <section class="panel" id="normalize-panel" hidden>
+    <h2 class="panel-title">4 · Normalize BPM</h2>
+    <p class="panel-desc">
+      Time-stretch the audio to a perfectly stable BPM while preserving pitch.
+      The output is exported at matching quality.
+    </p>
+
+    <div class="norm-options">
+      <div class="norm-opt-group">
+        <label>Target BPM
+          <input type="number" id="target-bpm" value="120" min="20" max="500" step="0.001"/>
+          <button class="link-btn small" id="use-global-bpm">Use detected</button>
+        </label>
+      </div>
+      <div class="norm-opt-group">
+        <label>Output format
+          <select id="norm-format">
+            <option value="wav">WAV (lossless)</option>
+            <option value="flac">FLAC (lossless compressed)</option>
+            <option value="mp3">MP3 320 kbps</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-primary" id="normalize-btn">Normalize &amp; Export</button>
+    </div>
+
+    <div id="norm-progress-wrap" hidden>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="norm-progress-bar" style="width:0%"></div>
+      </div>
+      <p class="progress-msg" id="norm-progress-msg">Starting …</p>
+    </div>
+
+    <div id="norm-download-wrap" hidden>
+      <a class="btn-primary" id="norm-download-link" download>⬇ Download Normalised Audio</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  iconic-bpm-bpmmer &nbsp;·&nbsp; Precision tempo &amp; structure analysis
+</footer>
+
+<script src="/static/js/visualizer.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>
