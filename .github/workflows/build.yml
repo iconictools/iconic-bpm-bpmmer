@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    name: Install & build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      # ffmpeg is required by pydub for MP3 export
+      - name: Install system dependencies
+        run: sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+
+      - name: Build (install deps + editable install)
+        run: make build
+
+      - name: Smoke-test import
+        run: |
+          .venv/bin/python - <<'EOF'
+          from analyzer.bpm_detector import BPMDetector
+          from analyzer.time_signature import TimeSignatureDetector
+          from analyzer.section_detector import SectionDetector
+          from analyzer.normalizer import BPMNormalizer
+          from analyzer.exporter import TempoExporter
+          import app  # verify Flask app loads without errors
+          print("All modules imported successfully.")
+          EOF
