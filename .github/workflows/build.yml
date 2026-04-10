@@ -41,3 +41,28 @@ jobs:
           import app  # verify Flask app loads without errors
           print("All modules imported successfully.")
           EOF
+
+  windows-executable:
+    name: Build Windows executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Build bundled executable
+        shell: pwsh
+        run: .\build_windows_exe.ps1 -Clean
+
+      - name: Upload Windows executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultimate-bpm-finder-windows-exe
+          path: dist/Ultimate BPM Finder

@@ -20,8 +20,14 @@ A full-stack web application for precise tempo and time-signature analysis of an
 ### Quick Start (auto-build)
 
 **One-click launchers**
-- **Windows**: double-click `start.bat` (native Windows launcher; auto-creates `.venv`, installs Python dependencies, and opens the app)
+- **Windows (self-sufficient executable)**: run `Ultimate BPM Finder.exe` (no Python install needed)
 - **macOS**: double-click `start.command` (if needed once: `chmod +x start.command`)
+
+For Windows executable builds from source:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File build_windows_exe.ps1 -Clean
+```
+This creates `dist\Ultimate BPM Finder\Ultimate BPM Finder.exe` with bundled Python/runtime dependencies.
 
 **Option 1 — `run.sh` (Linux / macOS)**
 ```bash
