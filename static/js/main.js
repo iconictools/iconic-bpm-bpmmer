@@ -441,9 +441,16 @@ function renderBeatStats(intervals) {
   ];
 
   stats.forEach(s => {
-    const d = document.createElement('div');
+    const d  = document.createElement('div');
     d.className = 'mini-stat';
-    d.innerHTML = `<div class="ml">${s.l}</div><div class="mv">${s.v}</div>`;
+    const ml = document.createElement('div');
+    ml.className  = 'ml';
+    ml.textContent = s.l;
+    const mv = document.createElement('div');
+    mv.className  = 'mv';
+    mv.textContent = s.v;
+    d.appendChild(ml);
+    d.appendChild(mv);
     beatStats.appendChild(d);
   });
 }
