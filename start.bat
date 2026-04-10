@@ -17,9 +17,10 @@ if exist "%EXE%" (
 )
 
 if not exist "%SCRIPT%" (
-  echo [ERROR] No bundled executable found.
+  echo [ERROR] No bundled executable or developer bootstrap script found.
   echo         Expected: "%~dp0Ultimate BPM Finder.exe"
   echo      or "%~dp0dist\Ultimate BPM Finder\Ultimate BPM Finder.exe"
+  echo      and "%~dp0run_windows.ps1"
   echo.
   echo Build it with:
   echo   powershell -NoProfile -ExecutionPolicy Bypass -File build_windows_exe.ps1

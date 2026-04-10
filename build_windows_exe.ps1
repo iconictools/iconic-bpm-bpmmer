@@ -13,7 +13,7 @@ function Get-PythonCommand {
   if (Get-Command python -ErrorAction SilentlyContinue) {
     return @{ Exe = 'python'; Args = @() }
   }
-  throw "Python 3.9+ is required to build the Windows executable."
+  throw "Python 3.9+ is required to build the Windows executable (3.11 recommended)."
 }
 
 $pythonCmd = Get-PythonCommand
