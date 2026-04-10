@@ -19,6 +19,10 @@ A full-stack web application for precise tempo and time-signature analysis of an
 
 ### Quick Start (auto-build)
 
+**One-click launchers**
+- **Windows**: double-click `start.bat` (requires Git Bash installed)
+- **macOS**: double-click `start.command` (first time: `chmod +x start.command`)
+
 **Option 1 — `run.sh` (Linux / macOS)**
 ```bash
 chmod +x run.sh
@@ -74,4 +78,3 @@ requirements.txt        Python dependencies
 Makefile                Build targets (install / run / clean / test)
 run.sh                  One-shot auto-build & run script
 ```
-
