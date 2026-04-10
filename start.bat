@@ -2,6 +2,7 @@
 setlocal
 
 cd /d "%~dp0"
+set "APP_NAME=Ultimate BPM Finder"
 
 if not exist "run.sh" (
   echo [ERROR] run.sh not found in this folder.
@@ -17,7 +18,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Starting Ultimate BPM Finder...
+echo Starting %APP_NAME%...
 bash "%~dp0run.sh"
 
 if errorlevel 1 (
