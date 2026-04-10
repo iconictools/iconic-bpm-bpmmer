@@ -78,10 +78,16 @@ function buildSectionsLegend(container, sections) {
     seen.add(key);
     const item = document.createElement('div');
     item.className = 'legend-item';
-    item.innerHTML = `
-      <span class="legend-swatch" style="background:${sectionColor(key)}"></span>
-      <span>${key}</span>
-    `;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'legend-swatch';
+    swatch.style.background = sectionColor(key);
+
+    const label = document.createElement('span');
+    label.textContent = String(key);
+
+    item.appendChild(swatch);
+    item.appendChild(label);
     container.appendChild(item);
   });
 }

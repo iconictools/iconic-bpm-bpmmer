@@ -18,7 +18,15 @@ FORCE_INSTALL=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --install)    FORCE_INSTALL=1 ; shift ;;
-    --port)       PORT="$2"        ; shift 2 ;;
+    --port)
+      # Validate that PORT is a plain integer in range 1-65535
+      if ! [[ "$2" =~ ^[0-9]+$ ]] || [[ "$2" -lt 1 ]] || [[ "$2" -gt 65535 ]]; then
+        echo "Error: --port must be an integer between 1 and 65535" >&2
+        exit 1
+      fi
+      PORT="$2"
+      shift 2
+      ;;
     --help|-h)
       sed -n '/^# Usage/,/^# ──/{ /^# ──/d; s/^# \{0,2\}//; p }' "$0"
       exit 0

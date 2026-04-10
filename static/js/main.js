@@ -339,15 +339,30 @@ function renderChangesTable(changes) {
   document.getElementById('changes-section').style.display = '';
   changes.forEach(ch => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${formatTime(ch.time)}</td>
-      <td>${ch.from_bpm.toFixed(6)}</td>
-      <td>${ch.to_bpm.toFixed(6)}</td>
-      <td style="color:${ch.delta_bpm > 0 ? '#3dd68c' : '#f05d5d'}">${
-        (ch.delta_bpm > 0 ? '+' : '') + ch.delta_bpm.toFixed(4)}</td>
-      <td><span class="${ch.type === 'accelerando' ? 'tag-acc' : 'tag-rit'}">${ch.type}</span></td>
-      <td>${formatTime(ch.start_time)} → ${formatTime(ch.end_time)}</td>
-    `;
+
+    const tdTime     = document.createElement('td');
+    const tdFrom     = document.createElement('td');
+    const tdTo       = document.createElement('td');
+    const tdDelta    = document.createElement('td');
+    const tdType     = document.createElement('td');
+    const tdTrans    = document.createElement('td');
+
+    tdTime.textContent  = formatTime(ch.time);
+    tdFrom.textContent  = Number(ch.from_bpm).toFixed(6);
+    tdTo.textContent    = Number(ch.to_bpm).toFixed(6);
+    const delta = Number(ch.delta_bpm);
+    tdDelta.textContent = (delta > 0 ? '+' : '') + delta.toFixed(4);
+    tdDelta.style.color = delta > 0 ? '#3dd68c' : '#f05d5d';
+
+    const span = document.createElement('span');
+    span.textContent = String(ch.type || '');
+    span.className   = ch.type === 'accelerando' ? 'tag-acc' : 'tag-rit';
+    tdType.appendChild(span);
+
+    tdTrans.textContent = `${formatTime(ch.start_time)} → ${formatTime(ch.end_time)}`;
+
+    tr.appendChild(tdTime); tr.appendChild(tdFrom); tr.appendChild(tdTo);
+    tr.appendChild(tdDelta); tr.appendChild(tdType); tr.appendChild(tdTrans);
     changesTbody.appendChild(tr);
   });
 }
@@ -361,11 +376,13 @@ function renderTsChangesTable(changes) {
   document.getElementById('ts-changes-section').style.display = '';
   changes.forEach(ch => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${formatTime(ch.time)}</td>
-      <td>${ch.from_signature}</td>
-      <td>${ch.to_signature}</td>
-    `;
+    const tdTime = document.createElement('td');
+    const tdFrom = document.createElement('td');
+    const tdTo   = document.createElement('td');
+    tdTime.textContent = formatTime(ch.time);
+    tdFrom.textContent = String(ch.from_signature || '');
+    tdTo.textContent   = String(ch.to_signature   || '');
+    tr.appendChild(tdTime); tr.appendChild(tdFrom); tr.appendChild(tdTo);
     tsCgsTbody.appendChild(tr);
   });
 }
@@ -374,15 +391,29 @@ function renderSectionsTable(sections) {
   sectionsTbody.innerHTML = '';
   sections.forEach(sec => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${sec.section_id || '—'}</td>
-      <td><span style="color:${sectionColor(sec.label)}">${sec.label}</span></td>
-      <td>${formatTime(sec.start_time)}</td>
-      <td>${formatTime(sec.end_time)}</td>
-      <td>${sec.duration.toFixed(2)}s</td>
-      <td>${sec.cluster ?? '—'}</td>
-      <td>${((sec.confidence || 0) * 100).toFixed(0)}%</td>
-    `;
+
+    const tdId   = document.createElement('td');
+    const tdLbl  = document.createElement('td');
+    const tdSt   = document.createElement('td');
+    const tdEn   = document.createElement('td');
+    const tdDur  = document.createElement('td');
+    const tdClus = document.createElement('td');
+    const tdConf = document.createElement('td');
+
+    tdId.textContent   = String(sec.section_id || '—');
+    const span = document.createElement('span');
+    span.textContent   = String(sec.label || '');
+    span.style.color   = sectionColor(sec.label);
+    tdLbl.appendChild(span);
+    tdSt.textContent   = formatTime(sec.start_time);
+    tdEn.textContent   = formatTime(sec.end_time);
+    tdDur.textContent  = Number(sec.duration).toFixed(2) + 's';
+    tdClus.textContent = sec.cluster != null ? String(sec.cluster) : '—';
+    tdConf.textContent = ((sec.confidence || 0) * 100).toFixed(0) + '%';
+
+    tr.appendChild(tdId); tr.appendChild(tdLbl); tr.appendChild(tdSt);
+    tr.appendChild(tdEn); tr.appendChild(tdDur); tr.appendChild(tdClus);
+    tr.appendChild(tdConf);
     sectionsTbody.appendChild(tr);
   });
 }

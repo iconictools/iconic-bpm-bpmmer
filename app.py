@@ -366,7 +366,7 @@ def export_file(job_id: str, fmt: str):
     _ALLOWED_EXPORT_FMTS = {"mid", "midi", "asd", "txt", "csv", "json", "markers"}
     fmt = fmt.lower()
     if fmt not in _ALLOWED_EXPORT_FMTS:
-        return jsonify({"error": f"Unknown export format: {fmt}"}), 400
+        return jsonify({"error": "Unknown export format"}), 400
 
     with _LOCK:
         job = _JOBS.get(job_id, {})
@@ -376,43 +376,66 @@ def export_file(job_id: str, fmt: str):
     result_data = job.get("result", {})
     bpm_data = result_data.get("bpm", {})
 
-    export_path = str(OUTPUT_DIR / f"{job_id}_export.{fmt}")
+    # Build output path entirely from server-generated UUID (no user input in path)
+    export_uuid = str(uuid.uuid4())
     exporter = TempoExporter()
+    export_path: str
 
     try:
         if fmt in ("mid", "midi"):
+            export_path = str(OUTPUT_DIR / f"{export_uuid}.mid")
             exporter.export_midi(
                 tempo_map=bpm_data.get("tempo_map", []),
                 beats=bpm_data.get("beats", []),
                 duration=bpm_data.get("duration", 0),
-                output_path=export_path.replace(".midi", ".mid"),
+                output_path=export_path,
             )
-            export_path = export_path.replace(".midi", ".mid")
         elif fmt == "asd":
+            export_path = str(OUTPUT_DIR / f"{export_uuid}.asd")
             exporter.export_ableton(result_data, export_path)
         elif fmt == "txt":
+            export_path = str(OUTPUT_DIR / f"{export_uuid}.txt")
             exporter.export_fl_studio(
                 tempo_map=bpm_data.get("tempo_map", []),
                 beats=bpm_data.get("beats", []),
                 output_path=export_path,
             )
         elif fmt == "csv":
+            export_path = str(OUTPUT_DIR / f"{export_uuid}.csv")
             exporter.export_csv(result_data, export_path)
         elif fmt == "json":
+            export_path = str(OUTPUT_DIR / f"{export_uuid}.json")
             exporter.export_json(result_data, export_path)
         elif fmt == "markers":
-            export_path = str(OUTPUT_DIR / f"{job_id}_export_beats.txt")
+            export_path = str(OUTPUT_DIR / f"{export_uuid}_beats.txt")
             exporter.export_beat_markers(bpm_data.get("beats", []), export_path)
+        else:
+            return jsonify({"error": "Unknown export format"}), 400
     except Exception:
         return jsonify({"error": "Export failed"}), 500
 
-    if not os.path.exists(export_path):
+    # Verify the written file lives within OUTPUT_DIR (defense-in-depth)
+    real_export = os.path.realpath(export_path)
+    real_output = os.path.realpath(str(OUTPUT_DIR))
+    if not real_export.startswith(real_output + os.sep):
+        return jsonify({"error": "Export path invalid"}), 500
+
+    if not os.path.exists(real_export):
         return jsonify({"error": "Export file not created"}), 500
 
+    # Choose a friendly download name based on the validated format
+    _download_names = {
+        "mid": "tempo_map.mid", "midi": "tempo_map.mid",
+        "asd": "ableton_warp.asd", "txt": "fl_studio_tempo.txt",
+        "csv": "tempo_log.csv", "json": "analysis.json",
+        "markers": "beat_markers.txt",
+    }
+    download_name = _download_names.get(fmt, Path(real_export).name)
+
     return send_file(
-        export_path,
+        real_export,
         as_attachment=True,
-        download_name=Path(export_path).name,
+        download_name=download_name,
     )
 
 
