@@ -21,7 +21,7 @@ A full-stack web application for precise tempo and time-signature analysis of an
 
 **One-click launchers**
 - **Windows**: double-click `start.bat` (requires Git Bash installed)
-- **macOS**: double-click `start.command` (first time: `chmod +x start.command`)
+- **macOS**: double-click `start.command` (if needed once: `chmod +x start.command`)
 
 **Option 1 — `run.sh` (Linux / macOS)**
 ```bash
