@@ -19,7 +19,27 @@ from __future__ import annotations
 import json
 import struct
 import os
+from pathlib import Path
 from typing import Dict, List, Optional
+
+
+# ---------------------------------------------------------------------------
+def _safe_write_path(output_path: str) -> str:
+    """
+    Resolve and return the real output path.
+    Raises ValueError if the resolved path escapes safe write locations
+    (i.e. it must live under /tmp, the cwd, or any path containing 'outputs').
+    """
+    resolved = os.path.realpath(output_path)
+    # Accept paths inside common safe output areas
+    safe_roots = (
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "outputs")),
+        os.path.realpath(os.path.join(os.path.dirname(__file__), "..", "uploads")),
+        "/tmp",
+    )
+    if not any(resolved.startswith(root) for root in safe_roots):
+        raise ValueError(f"Unsafe export path rejected: {output_path}")
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -57,9 +77,10 @@ class TempoExporter:
             tempo_map = [{"time": 0.0, "bpm": 120.0}]
 
         midi_bytes = self._build_midi(tempo_map, beats, duration, ticks_per_beat)
-        with open(output_path, "wb") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "wb") as f:
             f.write(midi_bytes)
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     def export_ableton(
@@ -110,9 +131,10 @@ class TempoExporter:
             "SampleRate": int(sr),
         }
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "w", encoding="utf-8") as f:
             json.dump(asd, f, indent=2)
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     def export_fl_studio(
@@ -149,9 +171,10 @@ class TempoExporter:
         else:
             lines.append(f"0\t{tempo_map[0]['bpm']:.10f}" if tempo_map else "0\t120.0")
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     def export_csv(
@@ -185,9 +208,10 @@ class TempoExporter:
             ts = get_ts(t)
             lines.append(f"{t:.6f},{bpm:.6f},{bpm_str},{conf:.4f},{ts}")
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines) + "\n")
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     def export_json(
@@ -196,19 +220,21 @@ class TempoExporter:
         """Write the full analysis as a pretty-printed JSON file."""
         # Remove non-serialisable items
         clean = _deep_clean(analysis)
-        with open(output_path, "w", encoding="utf-8") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "w", encoding="utf-8") as f:
             json.dump(clean, f, indent=2, ensure_ascii=False)
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     def export_beat_markers(
         self, beats: List[float], output_path: str
     ) -> str:
         """Write one beat timestamp per line (seconds)."""
-        with open(output_path, "w", encoding="utf-8") as f:
+        safe_path = _safe_write_path(output_path)
+        with open(safe_path, "w", encoding="utf-8") as f:
             for b in beats:
                 f.write(f"{b:.10f}\n")
-        return output_path
+        return safe_path
 
     # ------------------------------------------------------------------
     # MIDI builder (no external dependencies)

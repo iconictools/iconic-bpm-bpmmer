@@ -237,8 +237,8 @@ def _run_analysis(
         if q:
             q.put({"pct": 100, "msg": "done", "result": result})
 
-    except Exception as exc:
-        err_msg = str(exc)
+    except Exception:
+        err_msg = "Analysis failed"
         with _LOCK:
             _JOBS[job_id]["status"] = "error"
             _JOBS[job_id]["error"] = err_msg
@@ -315,7 +315,7 @@ def normalize():
         else:
             y_input = y
     except Exception as e:
-        return jsonify({"error": f"Cannot reload audio: {e}"}), 500
+        return jsonify({"error": "Cannot reload audio file"}), 500
 
     norm_job_id = str(uuid.uuid4())
     norm_path = str(OUTPUT_DIR / f"{norm_job_id}_norm.{output_format}")
@@ -343,11 +343,11 @@ def normalize():
                 _JOBS[norm_job_id]["norm_path"] = norm_path
                 _JOBS[norm_job_id]["result"] = norm_result
             q.put({"pct": 100, "msg": "done", "download_id": norm_job_id})
-        except Exception as e:
+        except Exception:
             with _LOCK:
                 _JOBS[norm_job_id]["status"] = "error"
-                _JOBS[norm_job_id]["error"] = str(e)
-            q.put({"pct": -1, "msg": f"Error: {e}", "error": str(e)})
+                _JOBS[norm_job_id]["error"] = "Normalisation failed"
+            q.put({"pct": -1, "msg": "Normalisation failed", "error": "Normalisation failed"})
 
     threading.Thread(target=_do_norm, daemon=True).start()
     return jsonify({"norm_job_id": norm_job_id})
@@ -356,6 +356,18 @@ def normalize():
 @app.route("/api/export/<job_id>/<fmt>")
 def export_file(job_id: str, fmt: str):
     """Generate and download an export file."""
+    # Validate job_id is a UUID (prevents path traversal)
+    try:
+        uuid.UUID(job_id)
+    except ValueError:
+        return jsonify({"error": "Invalid job ID"}), 400
+
+    # Allowlist for export formats (prevents path traversal via fmt)
+    _ALLOWED_EXPORT_FMTS = {"mid", "midi", "asd", "txt", "csv", "json", "markers"}
+    fmt = fmt.lower()
+    if fmt not in _ALLOWED_EXPORT_FMTS:
+        return jsonify({"error": f"Unknown export format: {fmt}"}), 400
+
     with _LOCK:
         job = _JOBS.get(job_id, {})
     if not job or job.get("status") != "done":
@@ -363,13 +375,12 @@ def export_file(job_id: str, fmt: str):
 
     result_data = job.get("result", {})
     bpm_data = result_data.get("bpm", {})
-    fmt = fmt.lower()
 
     export_path = str(OUTPUT_DIR / f"{job_id}_export.{fmt}")
     exporter = TempoExporter()
 
     try:
-        if fmt == "mid" or fmt == "midi":
+        if fmt in ("mid", "midi"):
             exporter.export_midi(
                 tempo_map=bpm_data.get("tempo_map", []),
                 beats=bpm_data.get("beats", []),
@@ -392,10 +403,8 @@ def export_file(job_id: str, fmt: str):
         elif fmt == "markers":
             export_path = str(OUTPUT_DIR / f"{job_id}_export_beats.txt")
             exporter.export_beat_markers(bpm_data.get("beats", []), export_path)
-        else:
-            return jsonify({"error": f"Unknown export format: {fmt}"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Export failed"}), 500
 
     if not os.path.exists(export_path):
         return jsonify({"error": "Export file not created"}), 500
